@@ -86,13 +86,13 @@ evaluation:
 
 ## PopREO
 
-**Popularity-based Ranking-based Equal Opportunity (PopREO@K).** Measures whether users receive similar ranks for **long-tail items** regardless of their group membership, focusing on **fairness in exposure**.
+**Popularity-based Ranking-based Equal Opportunity (PopREO@K).** Compares the fraction of relevant items retrieved from the short head and the long tail. Both the numerator and denominator are conditioned on relevance; this is a comparison between item popularity groups, not between user groups.
 
 $$
-\text{PopREO} = \frac{\sigma(p_{\text{short}},\; p_{\text{long}})}{\mu(p_{\text{short}},\; p_{\text{long}})}, \quad p_g = \frac{|\mathcal{L}^K \cap \mathcal{I}_g|}{|\mathcal{R} \cap \mathcal{I}_g|}
+\text{PopREO} = \frac{\sigma(p_{\text{short}},\; p_{\text{long}})}{\mu(p_{\text{short}},\; p_{\text{long}})}, \quad p_g = \frac{\sum_{u \in \mathcal{U}} |\mathcal{L}_u^K \cap \mathcal{R}_u \cap \mathcal{I}_g|}{\sum_{u \in \mathcal{U}} |\mathcal{R}_u \cap \mathcal{I}_g|}
 $$
 
-where $p_g$ is the ratio of recommended items from group $g$ to the number of relevant items from that group.
+Here $\mathcal{L}_u^K$ is user $u$'s recommendation list, $\mathcal{R}_u$ their relevant items, and $\mathcal{I}_g$ an item popularity group. Counts are summed over users before taking each group's rate. $\sigma$ is the population standard deviation of the two rates.
 
 The metric is undefined, and reported as `NaN`, when either group has no relevant item in the test set or no relevant item of either group is recommended.
 

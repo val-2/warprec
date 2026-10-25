@@ -87,7 +87,7 @@ class SparseAdjacency:
         # is how PyTorch asks to be told, instead of warning that it was assumed.
         with torch.sparse.check_sparse_tensor_invariants(enable=False):
             return self._edge_index.matmul(
-                other, input_value=self._value, reduce=reduce
+                other, input_value=self._value.to(dtype=other.dtype), reduce=reduce
             )
 
     def t(self) -> "SparseAdjacency":
@@ -206,23 +206,26 @@ class GraphRecommenderUtils(nn.Module):
         # Initialize local cache
         self._cached_user_emb = None
         self._cached_item_emb = None
+        self.register_load_state_dict_post_hook(self._clear_cache_after_load)
 
     def train(self, mode=True):
-        """Override train mode to empty the cache when switching to training."""
+        """Switch mode and discard propagated embeddings, retaining Module's return."""
         super().train(mode)
-
-        if mode:
-            # We are in training mode, embeddings will change. Empty the cache
-            self._cached_user_emb = None
-            self._cached_item_emb = None
-
-    def eval(self):
-        """Override eval mode to empty the cache when switching to evaluation."""
-        super().eval()
-
-        # We are in evaluation mode, embeddings will be cached. Empty the cache
         self._cached_user_emb = None
         self._cached_item_emb = None
+        return self
+
+    def _clear_cache_after_load(self, module: nn.Module, incompatible_keys: Any):
+        """Invalidate derived embeddings after loading weights, including nested loads."""
+        self._cached_user_emb = None
+        self._cached_item_emb = None
+
+    def _apply(self, fn: Any, recurse: bool = True):
+        """Discard caches when Module moves parameters to another device or dtype."""
+        result = super()._apply(fn, recurse=recurse)
+        self._cached_user_emb = None
+        self._cached_item_emb = None
+        return result
 
     def propagate_embeddings(self) -> Tuple[Tensor, Tensor]:
         """Retrieve the propagate user and item embeddings.

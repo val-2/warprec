@@ -59,3 +59,49 @@ binary nDCG as `nDCGRendle2020`; `nDCG` uses graded relevance. Use the evaluatio
 API or `ProxyRecommender` for existing models/lists instead of retraining just
 to adopt the framework. Historical results keep their original runtime and
 popularity partitions until an explicit new comparison is requested.
+
+## Follow-up audit: training and evaluation paths
+
+The follow-up audit adds fixes on the paths used by BPR and LightGCN:
+
+- Training negatives: canonicalize non-canonical CSR inputs on a copy before
+  binary-search membership checks, so unsorted rows cannot return seen items.
+  Reject draws with no unseen item of positive probability with `DataError`
+  rather than entering an endless rejection loop. Popularity sampling can
+  exhaust its support even when unseen zero-popularity items remain. The
+  distribution and random stream of feasible, canonical inputs are unchanged.
+- Graph inference: preserve the `nn.Module.train()/eval()` return contract,
+  invalidate propagated embedding caches after state-dict loads (including
+  nested loads) and device/dtype conversion, and match sparse edge-value
+  precision to the dense operand. LightGCN now scores and backpropagates in
+  float64 instead of crashing or returning an old float32 cache.
+- ARP: preserve zero training-interaction counts instead of smoothing them to
+  one. ARP performs no division by popularity and needs no such smoothing;
+  novelty metrics retain their separate handling.
+- Documentation: PopREO's displayed formula now conditions the numerator on
+  relevance and sums user-item occurrences, matching the implementation and
+  golden tests.
+
+Regressions are in `test_training_negative_edges.py`,
+`test_graph_inference_state.py` and the golden beyond-accuracy tests. The audit
+also exercises model smoke, training-seed, splitter and evaluation-loader tests
+in addition to the checks above. These use synthetic fixtures, not downstream
+experiment datasets.
+
+### Remaining evaluation limitations
+
+The evaluator can still count unavailable `-inf` positions when fewer than k
+finite candidates remain. A three-item fixture with only one available,
+irrelevant item reports `NumRetrieved=1` but `Recall=1`, binary nDCG about
+`0.63093` and `ItemCoverage=3`, because a masked relevant item fills a top-k
+slot. Do not treat partial/restricted rankings as validated until that path
+handles missing slots consistently across accuracy and exposure metrics. The
+current audit records the defect without imposing a new partial-list protocol.
+
+`ProxyRecommender` additionally assigns zero to unlisted pairs by documented
+design; a listed negative score ranks below every unlisted item. It is not a
+lossless importer of arbitrary finite lists. These limitations must be resolved
+before downstream migration; shifting scores does not resolve missing-list
+semantics. Direct in-place edits to embedding weights during evaluation also
+require explicit cache invalidation, for example by calling `eval()` again;
+the graph fixes do not intercept arbitrary tensor writes.
