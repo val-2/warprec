@@ -120,6 +120,10 @@ class BaseMetric(Metric, ABC):
     ) -> Tuple[Tensor, Tensor]:
         """Compute popularity as tensors of the short head and long tail.
 
+        Equal counts are ordered by ascending item index, so a tied block
+        crossing the cumulative cutoff has the same members on every backend
+        when the item mapping and counts are the same.
+
         Args:
             item_interactions (Tensor): The counts for item interactions in training set.
             pop_ratio (float): The percentile considered popular.
@@ -129,9 +133,10 @@ class BaseMetric(Metric, ABC):
                 - Tensor: The tensor containing indices of short head items.
                 - Tensor: The tensor containing indices of long tail items.
         """
-        # Order item popularity
+        # Keep input (item-index) order within popularity ties. An unstable
+        # sort can move different items across the cutoff on CPU and GPU.
         sorted_interactions, sorted_indices = torch.sort(
-            item_interactions, descending=True
+            item_interactions, descending=True, stable=True
         )
 
         # Determine short head cutoff based on cumulative popularity
