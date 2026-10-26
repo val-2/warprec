@@ -87,7 +87,7 @@ class SparseAdjacency:
         # is how PyTorch asks to be told, instead of warning that it was assumed.
         with torch.sparse.check_sparse_tensor_invariants(enable=False):
             return self._edge_index.matmul(
-                other, input_value=self._value, reduce=reduce
+                other, input_value=self._value.to(dtype=other.dtype), reduce=reduce
             )
 
     def t(self) -> "SparseAdjacency":
