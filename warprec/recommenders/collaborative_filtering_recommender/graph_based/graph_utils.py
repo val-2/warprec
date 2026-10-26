@@ -220,6 +220,13 @@ class GraphRecommenderUtils(nn.Module):
         self._cached_user_emb = None
         self._cached_item_emb = None
 
+    def _apply(self, fn: Any, recurse: bool = True):
+        """Discard caches when Module moves parameters to another device or dtype."""
+        result = super()._apply(fn, recurse=recurse)
+        self._cached_user_emb = None
+        self._cached_item_emb = None
+        return result
+
     def propagate_embeddings(self) -> Tuple[Tensor, Tensor]:
         """Retrieve the propagate user and item embeddings.
 
