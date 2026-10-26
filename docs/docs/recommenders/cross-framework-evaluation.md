@@ -31,7 +31,16 @@ user_id	item_id	rating
 ...
 ```
 
-The ids are the original ones of the dataset, not WarpRec's indices; rows naming a user or item the dataset does not know, or carrying a nonfinite score, are dropped. Every pair the file does not list is **unavailable** (score `-inf`):
+The ids are the original ones of the dataset, not WarpRec's indices; rows naming a user or item the dataset does not know, or carrying a nonfinite score, are dropped.
+
+By default, `missing_policy: zero` preserves the upstream contract: every pair
+the file does not list scores **0**. A missing user therefore has a full row of
+zeros, a short list is completed with unlisted items, and those zeros rank above
+listed negative scores. Use positive scores when replaying a complete top-k
+ordering under this convention.
+
+For faithful import of partial lists, explicitly choose
+`missing_policy: unavailable`. Every unlisted pair then scores `-inf`:
 
 - a user missing from the file is still evaluated, with an empty list: accuracy is zero when that user has relevant test items, while list averages such as ARP and APLT are undefined;
 - a list shorter than the cutoff stays short; unlisted pairs earn no hits or exposure;
@@ -47,6 +56,7 @@ models:
     recommendation_file: /path/to/recommendations.tsv
     separator: "\t"
     header: True
+    missing_policy: unavailable  # opt in to exact listed-pair semantics
 ```
 
 The `recommendation_file` parameter points to the file containing the precomputed recommendation lists. WarpRec will load these recommendations and pass them through the configured evaluation pipeline, producing the same output artifacts (evaluation reports, statistical tests, etc.) as for any built-in model.

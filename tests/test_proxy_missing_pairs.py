@@ -8,10 +8,14 @@ from scipy.sparse import csr_matrix
 
 from warprec.evaluation import Evaluator
 from warprec.recommenders.proxy import ProxyRecommender
+from warprec.errors import ModelError
 
 
 def proxy(
-    tmp_path: Path, header: bool = True, include_last: bool = False
+    tmp_path: Path,
+    header: bool = True,
+    include_last: bool = False,
+    missing_policy: str | None = "unavailable",
 ) -> ProxyRecommender:
     """Replay one negative and one explicitly zero-scored recommendation."""
     file = tmp_path / "recommendations.tsv"
@@ -26,9 +30,26 @@ def proxy(
         "user_mapping": {10: 0, 20: 1},
         "item_mapping": {100: 0, 200: 1, 300: 2, 400: 3, 500: 4},
     }
-    return ProxyRecommender(
-        {"recommendation_file": str(file), "separator": "\t", "header": header}, info
+    params = {"recommendation_file": str(file), "separator": "\t", "header": header}
+    if missing_policy is not None:
+        params["missing_policy"] = missing_policy
+    return ProxyRecommender(params, info)
+
+
+@pytest.mark.parametrize("policy", [None, "zero"])
+def test_default_retains_upstream_zero_completion(tmp_path: Path, policy: str | None):
+    """Omitting the policy preserves the documented upstream score matrix."""
+    model = proxy(tmp_path, missing_policy=policy)
+    torch.testing.assert_close(
+        model.predict(torch.tensor([0, 1])),
+        torch.tensor([[0.0, 0.0, -2.0, 0.0, 0.0], [0.0] * 5]),
     )
+
+
+def test_unknown_missing_policy_is_rejected(tmp_path: Path):
+    """A misspelled strict mode must not silently select zero completion."""
+    with pytest.raises(ModelError, match="missing_policy"):
+        proxy(tmp_path, missing_policy="unknown")
 
 
 @pytest.mark.parametrize("header", [True, False])

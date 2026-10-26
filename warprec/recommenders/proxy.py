@@ -28,6 +28,8 @@ class ProxyRecommender(Recommender):
         recommendation_file (str): Path to the recommendation file.
         separator (str): Separator of the recommendation file.
         header (bool): Wether or not the recommendation file has an header.
+        missing_policy (str): 'zero' preserves upstream score completion;
+            'unavailable' evaluates only explicitly listed pairs.
 
     Raises:
         ModelError: If the item and user mappings or the number of items and
@@ -40,6 +42,7 @@ class ProxyRecommender(Recommender):
     recommendation_file: str
     separator: str
     header: bool
+    missing_policy: str = "zero"
 
     def __init__(
         self,
@@ -50,6 +53,8 @@ class ProxyRecommender(Recommender):
         **kwargs: Any,
     ):
         super().__init__(params, info, *args, seed=seed, **kwargs)
+        if self.missing_policy not in ("zero", "unavailable"):
+            raise ModelError("missing_policy must be 'zero' or 'unavailable'")
 
         imap: dict = info.get("item_mapping", None)
         umap: dict = info.get("user_mapping", None)
@@ -129,9 +134,10 @@ class ProxyRecommender(Recommender):
         """
         # Access the scores from the recommendation file
         batch = self.predictions_sparse[user_indices.cpu().numpy()].tocoo()
-        # Sparse zeros and absent entries differ: a listed score of zero is a
-        # real recommendation, while an omitted pair must never enter a list.
-        predictions_numpy = np.full(batch.shape, -np.inf, dtype=batch.dtype)
+        # Preserve upstream completion by default. Exact partial-list import
+        # is an explicit policy, independent of the sign of listed scores.
+        fill = 0.0 if self.missing_policy == "zero" else -np.inf
+        predictions_numpy = np.full(batch.shape, fill, dtype=batch.dtype)
         predictions_numpy[batch.row, batch.col] = batch.data
         predictions = torch.from_numpy(predictions_numpy)
 
