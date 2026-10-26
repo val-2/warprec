@@ -49,5 +49,21 @@ The evaluator and direct metric fallbacks use the same validity rule.
 validity mask, also under sampled evaluation. An invalid slot has a safe lookup
 index only to avoid indexing past the catalogue; consumers must apply its mask.
 
-Complete lists preserve the previous denominators and formulas. No score shift,
-extra recommended item or fabricated hit is used to complete a short list.
+Complete lists preserve the previous denominators and formulas. To import a
+partial file without completing it, select `ProxyRecommender`'s explicit
+`missing_policy: unavailable`. Its upstream-compatible default, `zero`, gives
+unlisted pairs finite zero scores and therefore produces a completed ranking.
+
+## Explicit numerical precision
+
+Metrics keep their default float32 arithmetic unless the caller explicitly uses
+`metric.set_dtype(torch.float64)`. ARP, APLT, the DCG/discount helpers and Gini
+preserve the requested precision through their arithmetic as well as their
+accumulator states. In binary nDCG the input relevance values are exact zeros
+and ones; this does not imply that every other metric or fractional input
+rating in the evaluator is computed in float64.
+
+Precision changes can alter the last bits while keeping the formula unchanged.
+Record the dtype and framework commit. A historical float32 reduction is a
+distinct numerical reference, not a value to emulate by changing the formula
+or relaxing a failed replay check.

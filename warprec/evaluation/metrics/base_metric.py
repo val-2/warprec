@@ -503,7 +503,10 @@ class TopKMetric(BaseMetric):
             Tensor: The discounted tensor.
         """
         return (
-            rel / torch.log2(torch.arange(2, rel.size(1) + 2, device=rel.device))
+            rel.to(self.dtype)
+            / torch.log2(
+                torch.arange(2, rel.size(1) + 2, device=rel.device, dtype=self.dtype)
+            )
         ).sum(dim=1)
 
     def discounted_sum(self, k: int) -> Tensor:
@@ -515,8 +518,8 @@ class TopKMetric(BaseMetric):
         Returns:
             Tensor: The sum of the discounts for k values.
         """
-        ranks = torch.arange(k)
-        return torch.sum(1.0 / torch.log2(ranks.float() + 2))
+        ranks = torch.arange(k, dtype=self.dtype)
+        return torch.sum(1.0 / torch.log2(ranks + 2))
 
     def remap_indices(self, top_k_indices: Tensor, item_indices: Tensor) -> Tensor:
         """Remap local batch indices to global item IDs if item_indices is provided.
