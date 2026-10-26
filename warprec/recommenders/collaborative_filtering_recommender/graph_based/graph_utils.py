@@ -206,6 +206,7 @@ class GraphRecommenderUtils(nn.Module):
         # Initialize local cache
         self._cached_user_emb = None
         self._cached_item_emb = None
+        self.register_load_state_dict_post_hook(self._clear_cache_after_load)
 
     def train(self, mode=True):
         """Switch mode and discard propagated embeddings, retaining Module's return."""
@@ -213,6 +214,11 @@ class GraphRecommenderUtils(nn.Module):
         self._cached_user_emb = None
         self._cached_item_emb = None
         return self
+
+    def _clear_cache_after_load(self, module: nn.Module, incompatible_keys: Any):
+        """Invalidate derived embeddings after loading weights, including nested loads."""
+        self._cached_user_emb = None
+        self._cached_item_emb = None
 
     def propagate_embeddings(self) -> Tuple[Tensor, Tensor]:
         """Retrieve the propagate user and item embeddings.
