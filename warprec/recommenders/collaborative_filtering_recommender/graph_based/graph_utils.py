@@ -208,21 +208,11 @@ class GraphRecommenderUtils(nn.Module):
         self._cached_item_emb = None
 
     def train(self, mode=True):
-        """Override train mode to empty the cache when switching to training."""
+        """Switch mode and discard propagated embeddings, retaining Module's return."""
         super().train(mode)
-
-        if mode:
-            # We are in training mode, embeddings will change. Empty the cache
-            self._cached_user_emb = None
-            self._cached_item_emb = None
-
-    def eval(self):
-        """Override eval mode to empty the cache when switching to evaluation."""
-        super().eval()
-
-        # We are in evaluation mode, embeddings will be cached. Empty the cache
         self._cached_user_emb = None
         self._cached_item_emb = None
+        return self
 
     def propagate_embeddings(self) -> Tuple[Tensor, Tensor]:
         """Retrieve the propagate user and item embeddings.
