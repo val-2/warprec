@@ -105,6 +105,12 @@ class NegativeSampler:
         self.strategy = strategy
         self._cumulative: Optional[np.ndarray] = None
 
+        # Membership uses binary search; CSR inputs may be unsorted or contain
+        # duplicates. Canonicalize a copy without changing the caller's matrix.
+        if not self.sparse_matrix.has_canonical_format:
+            self.sparse_matrix = self.sparse_matrix.copy()
+            self.sparse_matrix.sum_duplicates()
+
         # The sampler owns its stream rather than drawing from the global one,
         # which nothing seeds in the single-process case and which any other
         # caller can disturb between two otherwise identical runs.
@@ -137,7 +143,7 @@ class NegativeSampler:
                 candidate = int(np.searchsorted(self._cumulative, self.rng.random()))
                 candidate = min(candidate, self.niid - 1)
 
-            # Fast check on sorted array (CSR indices are sorted by default)
+            # Binary search is safe after canonicalizing the input once.
             idx_ins = np.searchsorted(seen_items, candidate)
             if idx_ins < len(seen_items) and seen_items[idx_ins] == candidate:
                 continue
