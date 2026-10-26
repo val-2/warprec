@@ -51,12 +51,13 @@ class LongTailMetric(UserAverageTopKMetric):
         _, lt = self.compute_head_tail(item_interactions, self.pop_ratio)
         self.register_buffer("long_tail", lt)
 
-    def _aggregate(self, long_tail_hits: Tensor) -> Tensor:
+    def _aggregate(self, long_tail_hits: Tensor, num_recommendations: Tensor) -> Tensor:
         """Turn the per-user long-tail hits into the metric's score.
 
         Args:
             long_tail_hits (Tensor): A boolean tensor marking, for each user, which
                 of their recommended items belong to the long tail.
+            num_recommendations (Tensor): The number of finite-score recommendations per user.
 
         Returns:
             Tensor: The per-user score.
@@ -69,17 +70,12 @@ class LongTailMetric(UserAverageTopKMetric):
     def compute_scores(
         self, preds: Tensor, target: Tensor, top_k_rel: Tensor, **kwargs: Any
     ) -> Tensor:
-        # Retrieve top_k_indices from kwargs
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
-
-        # Remap top_k_indices to global
-        item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
 
         # Check which items are in the long tail
-        is_long_tail = torch.isin(top_k_indices, self.long_tail)
+        is_long_tail = torch.isin(top_k_indices, self.long_tail) & valid
 
-        return self._aggregate(is_long_tail)
+        return self._aggregate(is_long_tail, valid.sum(dim=1))
 
     @property
     def name(self):

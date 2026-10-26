@@ -586,14 +586,16 @@ class Evaluator:
                 if MetricBlock.TOP_K_BINARY_RELEVANCE in required:
                     precomputed_blocks[k][f"top_{k}_binary_relevance"] = (
                         BaseMetric.top_k_relevance_from_indices(
-                            binary_relevance, top_k_indices
+                            binary_relevance, top_k_indices, top_k_values_full[:, :k]
                         )
                     )
 
                 if MetricBlock.TOP_K_DISCOUNTED_RELEVANCE in required:
                     precomputed_blocks[k][f"top_{k}_discounted_relevance"] = (
                         BaseMetric.top_k_relevance_from_indices(
-                            discounted_relevance, top_k_indices
+                            discounted_relevance,
+                            top_k_indices,
+                            top_k_values_full[:, :k],
                         )
                     )
 

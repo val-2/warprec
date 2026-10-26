@@ -91,14 +91,12 @@ class RSP(TopKMetric):
 
     def update(self, preds: Tensor, user_indices: Tensor, **kwargs: Any):
         users = kwargs.get("valid_users")
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
 
-        # Remap top_k_indices to global
         item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
 
         # Accumulate cluster recommendations for numerator
-        flat_indices = top_k_indices.flatten()
+        flat_indices = top_k_indices[valid]
         rec_clusters = self.item_clusters[flat_indices]
         batch_rec_counts = torch.bincount(
             rec_clusters, minlength=self.n_item_clusters

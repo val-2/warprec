@@ -45,15 +45,10 @@ class ShannonEntropy(TopKMetric):
         self.add_state("total_recs", default=torch.tensor(0.0), dist_reduce_fx="sum")
 
     def update(self, preds: Tensor, **kwargs: Any):
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
-        item_indices = kwargs.get("item_indices")
-
-        # Remap top_k_indices to global
-        item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
 
         # Flatten recommendations and count occurrences
-        flattened = top_k_indices.flatten().long()
+        flattened = top_k_indices[valid].long()
 
         # Safety check for bounds
         flattened = flattened[flattened < self.num_items]

@@ -72,19 +72,16 @@ class PopREO(TopKMetric):
 
     def update(self, preds: Tensor, **kwargs: Any):
         target = kwargs.get("binary_relevance")
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
         top_k_rel = kwargs.get(f"top_{self.k}_binary_relevance")
         item_indices = kwargs.get("item_indices")
-
-        # Remap top_k_indices to global
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
 
         # Equal opportunity is conditioned on relevance: what is counted is a
         # recommendation the user actually wanted, not merely one that was made.
         # Counting every recommended item instead pairs this numerator with a
         # denominator of relevant items alone, which is a ratio of two different
         # populations and can exceed one.
-        recommended = top_k_indices[top_k_rel > 0]
+        recommended = top_k_indices[(top_k_rel > 0) & valid]
 
         # Extract positive item indices from target
         if item_indices is not None:

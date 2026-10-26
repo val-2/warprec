@@ -15,13 +15,14 @@ class APLT(LongTailMetric):
     by incorporating less popular items into recommendations while maintaining relevance.
     """
 
-    def _aggregate(self, long_tail_hits: Tensor) -> Tensor:
+    def _aggregate(self, long_tail_hits: Tensor, num_recommendations: Tensor) -> Tensor:
         """Take the share of each user's top-k that falls in the long tail.
 
         Args:
             long_tail_hits (Tensor): The per-user long-tail membership of the top-k.
+            num_recommendations (Tensor): The actual recommendation count per user.
 
         Returns:
             Tensor: The proportion of long-tail recommendations per user.
         """
-        return long_tail_hits.sum(dim=1).float() / self.k
+        return long_tail_hits.sum(dim=1).float() / num_recommendations

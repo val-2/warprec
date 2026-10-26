@@ -47,18 +47,11 @@ class Gini(TopKMetric):
         self.add_state("free_norm", default=torch.tensor(0.0), dist_reduce_fx="sum")
 
     def update(self, preds: Tensor, **kwargs: Any):
-        # Retrieve top_k_indices from kwargs
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
-
-        # Remap top_k_indices to global
-        item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
-
-        batch_size = top_k_indices.size(0)
-        self.free_norm += torch.tensor(batch_size * self.k, dtype=torch.float)
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
+        self.free_norm += valid.sum()
 
         # Flatten the indices and update item_counts
-        flat_indices = top_k_indices.flatten()
+        flat_indices = top_k_indices[valid]
 
         # Ensure indices are within bounds (safety check)
         flat_indices = flat_indices[flat_indices < self.num_items]
@@ -75,7 +68,7 @@ class Gini(TopKMetric):
             or self.num_items == 0
             or self.free_norm == 0
         ):
-            return {self.name: 0.0}
+            return {self.name: float("nan")}
 
         n_rec_items = recommended_counts.numel()
         sorted_counts, _ = torch.sort(recommended_counts)

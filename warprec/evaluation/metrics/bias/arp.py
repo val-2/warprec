@@ -44,16 +44,11 @@ class ARP(UserAverageTopKMetric):
     def compute_scores(
         self, preds: Tensor, target: Tensor, top_k_rel: Tensor, **kwargs: Any
     ) -> Tensor:
-        # Retrieve top_k_indices from kwargs
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
-
-        # Remap top_k_indices to global
-        item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
 
         # Retrieve popularity for the recommended items
         # Shape: [batch_size, k]
         recommended_items_pop = self.pop[top_k_indices]
 
         # Average popularity per user
-        return recommended_items_pop.mean(dim=1).float()
+        return (recommended_items_pop * valid).sum(dim=1).float() / valid.sum(dim=1)

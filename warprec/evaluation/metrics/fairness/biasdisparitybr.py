@@ -76,21 +76,17 @@ class BiasDisparityBR(TopKMetric):
         )
 
     def update(self, preds: Tensor, user_indices: Tensor, **kwargs: Any):
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
-
-        # Remap top_k_indices to global
-        item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
 
         # Get User Clusters (expanded to match top-k shape)
         # user_indices: [Batch] -> [Batch, 1] -> [Batch, K] -> [Batch * K]
         batch_user_clusters = self.user_clusters[user_indices]
-        flat_user_clusters = (
-            batch_user_clusters.unsqueeze(1).expand(-1, self.k).reshape(-1)
-        )
+        flat_user_clusters = batch_user_clusters.unsqueeze(1).expand_as(top_k_indices)[
+            valid
+        ]
 
         # Get Item Clusters
-        flat_item_clusters = self.item_clusters[top_k_indices.reshape(-1)]
+        flat_item_clusters = self.item_clusters[top_k_indices[valid]]
 
         # Vectorized Counting using bincount on flattened 2D coordinates
         # Index = user_cluster * n_item_cols + item_cluster

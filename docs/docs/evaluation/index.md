@@ -1,5 +1,8 @@
 # Evaluation System
 
+See [Partial recommendation lists](partial-rankings.md) for the treatment of
+unavailable top-k positions, metric denominators and empty lists.
+
 The WarpRec `Evaluator` is engineered for **high-throughput and efficiency** in metric computation, diverging significantly from the conventional methods employed by many existing frameworks.
 
 ## Optimizing Metric Computation: Batch-Oriented Architecture

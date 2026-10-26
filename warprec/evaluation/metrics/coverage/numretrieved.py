@@ -28,4 +28,4 @@ class NumRetrieved(UserAverageTopKMetric):
         top_k_values = kwargs.get(f"top_{self.k}_values")
 
         # Count items that are not -inf (valid recommendations)
-        return (~torch.isinf(top_k_values)).sum(dim=1).float()
+        return torch.isfinite(top_k_values).sum(dim=1).float()

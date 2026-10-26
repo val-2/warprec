@@ -63,15 +63,11 @@ class ItemMADRanking(TopKMetric):
 
     def update(self, preds: Tensor, **kwargs: Any):
         top_k_gains = kwargs.get(f"top_{self.k}_discounted_relevance")
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
-
-        # Remap top_k_indices to global
-        item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
 
         # Flatten for accumulation
-        flat_indices = top_k_indices.flatten()
-        flat_gains = top_k_gains.flatten().float()
+        flat_indices = top_k_indices[valid]
+        flat_gains = top_k_gains[valid].float()
 
         # Accumulate counts (1 for every appearance in top-k)
         self.item_counts.index_add_(

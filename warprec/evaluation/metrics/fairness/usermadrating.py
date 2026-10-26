@@ -56,7 +56,8 @@ class UserMADRating(UserAverageTopKMetric):
         top_k_values = kwargs.get(f"top_{self.k}_values")
 
         # Average score of the top-k items for each user
-        return top_k_values.mean(dim=1)
+        valid = torch.isfinite(top_k_values)
+        return top_k_values.masked_fill(~valid, 0).sum(dim=1) / valid.sum(dim=1)
 
     def compute(self):
         # Calculate average rating per user

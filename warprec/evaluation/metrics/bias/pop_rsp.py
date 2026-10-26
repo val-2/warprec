@@ -74,15 +74,16 @@ class PopRSP(TopKMetric):
         self.add_state("avail_long", default=torch.tensor(0.0), dist_reduce_fx="sum")
 
     def update(self, preds: Tensor, **kwargs: Any):
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
         item_indices = kwargs.get("item_indices")
 
-        # Remap top_k_indices to global
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
-
         # Accumulate short head and long tail recommendations
-        self.short_recs += torch.isin(top_k_indices, self.short_head).sum().float()
-        self.long_recs += torch.isin(top_k_indices, self.long_tail).sum().float()
+        self.short_recs += (
+            (torch.isin(top_k_indices, self.short_head) & valid).sum().float()
+        )
+        self.long_recs += (
+            (torch.isin(top_k_indices, self.long_tail) & valid).sum().float()
+        )
 
         # A group's rate is how often it was recommended out of how often it
         # could have been, so the denominator counts what was on offer to each

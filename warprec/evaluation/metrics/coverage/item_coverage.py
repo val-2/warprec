@@ -39,15 +39,10 @@ class ItemCoverage(TopKMetric):
         )
 
     def update(self, preds: Tensor, **kwargs: Any):
-        # Retrieve top_k_indices from kwargs
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
-
-        # Remap top_k_indices to global
-        item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
 
         # Flatten the indices to count occurrences across the entire batch
-        flat_indices = top_k_indices.flatten()
+        flat_indices = top_k_indices[valid]
 
         # Update counts
         batch_counts = torch.bincount(flat_indices, minlength=len(self.item_counts))

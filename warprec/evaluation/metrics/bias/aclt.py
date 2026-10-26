@@ -15,11 +15,12 @@ class ACLT(LongTailMetric):
     ACLT value indicates a system that effectively recommends less popular items.
     """
 
-    def _aggregate(self, long_tail_hits: Tensor) -> Tensor:
+    def _aggregate(self, long_tail_hits: Tensor, num_recommendations: Tensor) -> Tensor:
         """Count the long-tail items recommended to each user.
 
         Args:
             long_tail_hits (Tensor): The per-user long-tail membership of the top-k.
+            num_recommendations (Tensor): The actual recommendation count per user.
 
         Returns:
             Tensor: The count of long-tail recommendations per user.

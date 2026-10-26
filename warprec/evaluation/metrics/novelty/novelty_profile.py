@@ -1,6 +1,5 @@
 from typing import Any, ClassVar, Tuple
 
-import torch
 from torch import Tensor
 
 from warprec.evaluation.metrics.base_metric import UserAverageTopKMetric
@@ -89,18 +88,11 @@ class NoveltyProfileMetric(UserAverageTopKMetric):
     def compute_scores(
         self, preds: Tensor, target: Tensor, top_k_rel: Tensor, **kwargs: Any
     ) -> Tensor:
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
-        item_indices = kwargs.get("item_indices")
-
-        # Retrieve Novelty for Top-K items
-        if item_indices is not None:
-            batch_novelty = self.novelty_profile[0, item_indices]
-            novelty = torch.gather(batch_novelty, 1, top_k_indices)
-        else:
-            novelty = self.novelty_profile[0, top_k_indices]
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
+        novelty = self.novelty_profile[0, top_k_indices]
 
         # Compute DCG(rel * novelty)
-        gain = top_k_rel * novelty
+        gain = (top_k_rel * novelty).masked_fill(~valid, 0)
         dcg_val = self.dcg(gain)
 
         # Normalize by Discounted Sum (IDCG-like factor)

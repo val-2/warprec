@@ -65,15 +65,11 @@ class ItemMADRating(TopKMetric):
 
     def update(self, preds: Tensor, **kwargs: Any):
         top_k_values = kwargs.get(f"top_{self.k}_values")
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
         top_k_rel = kwargs.get(f"top_{self.k}_binary_relevance")
 
         # Create relevance mask (only consider relevant items)
-        rel_mask = top_k_rel.bool()
-
-        # Remap top_k_indices to global
-        item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
+        rel_mask = top_k_rel.bool() & valid
 
         # Filter only Relevant items (True Positives)
         # We select elements from global_indices and top_k_values where relevance_mask is True

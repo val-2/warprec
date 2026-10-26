@@ -87,18 +87,25 @@ class BaseMetric(Metric, ABC):
 
     @classmethod
     def top_k_relevance_from_indices(
-        cls, target: Tensor, top_k_indices: Tensor
+        cls,
+        target: Tensor,
+        top_k_indices: Tensor,
+        ranked_values: Optional[Tensor] = None,
     ) -> Tensor:
         """Compute the top k relevance tensor.
 
         Args:
             target (Tensor): The target tensor.
             top_k_indices (Tensor): The top k indices.
+            ranked_values (Optional[Tensor]): Scores at those positions; nonfinite slots earn no gain.
 
         Returns:
             Tensor: The top k relevance tensor.
         """
-        return torch.gather(target, dim=1, index=top_k_indices)
+        relevance = torch.gather(target, dim=1, index=top_k_indices)
+        if ranked_values is not None:
+            relevance = relevance.masked_fill(~torch.isfinite(ranked_values), 0)
+        return relevance
 
     @classmethod
     def top_k_relevance(cls, preds: Tensor, target: Tensor, k: int) -> Tensor:
@@ -112,8 +119,8 @@ class BaseMetric(Metric, ABC):
         Returns:
             Tensor: The top k relevance tensor.
         """
-        _, top_k_indices = torch.topk(preds, k, dim=1)
-        return torch.gather(target, dim=1, index=top_k_indices)
+        values, top_k_indices = torch.topk(preds, k, dim=1)
+        return cls.top_k_relevance_from_indices(target, top_k_indices, values)
 
     def compute_head_tail(
         self, item_interactions: Tensor, pop_ratio: float = 0.8
@@ -286,12 +293,16 @@ class BaseMetric(Metric, ABC):
             if k_text.isdigit():
                 k = int(k_text)
                 if block in ("values", "indices"):
+                    indices = blocks.get(f"top_{k}_indices")
+                    if block == "values" and indices is not None:
+                        return torch.gather(preds, 1, indices)
                     values, indices = torch.topk(preds, k, dim=1)
                     return values if block == "values" else indices
                 if block in ("binary_relevance", "discounted_relevance"):
                     return self.top_k_relevance_from_indices(
                         self.block(blocks, block, preds),
                         self.block(blocks, f"top_{k}_indices", preds),
+                        self.block(blocks, f"top_{k}_values", preds),
                     )
         elif ground is not None:
             derive = {
@@ -521,6 +532,24 @@ class TopKMetric(BaseMetric):
             return torch.gather(item_indices, 1, top_k_indices)
         return top_k_indices
 
+    def recommendations(self, preds: Tensor, **blocks: Any) -> Tuple[Tensor, Tensor]:
+        """Read global item indices and the mask of actual recommendations.
+
+        Invalid slots use a safe lookup index but must be excluded by the mask.
+        This also prevents sampled padding IDs from indexing past the catalogue.
+
+        Args:
+            preds (Tensor): The score matrix.
+            **blocks (Any): Precomputed ranking blocks and optional sampled item IDs.
+
+        Returns:
+            Tuple[Tensor, Tensor]: Safe global indices and finite-score validity.
+        """
+        indices = self.block(blocks, f"top_{self.k}_indices", preds)
+        valid = torch.isfinite(self.block(blocks, f"top_{self.k}_values", preds))
+        indices = self.remap_indices(indices, blocks.get("item_indices"))
+        return indices.masked_fill(~valid, 0), valid
+
 
 class UserAverageTopKMetric(TopKMetric):
     """The definition of a User Average Top-K metric.
@@ -601,16 +630,18 @@ class UserAverageTopKMetric(TopKMetric):
         target, users, top_k_data = self.unpack_inputs(preds, **kwargs)
         batch_scores = self.compute_scores(preds, target, top_k_data, **kwargs)
 
-        # Safety masking
+        # Undefined list averages, such as ARP for an empty list, do not enter
+        # either sum or denominator. A user with no defined row remains NaN.
+        defined = (users > 0) & torch.isfinite(batch_scores)
         batch_scores = torch.where(
-            users > 0, batch_scores, torch.tensor(0.0, device=preds.device)
+            defined, batch_scores, torch.tensor(0.0, device=preds.device)
         )
 
         # Accumulate per user, in the accumulators' precision: a score read
         # from the predictions is float64 when the model scores in float64.
         self.scores.index_add_(0, user_indices, batch_scores.to(self.scores.dtype))
         self.user_interactions.index_add_(
-            0, user_indices, users.to(self.user_interactions.dtype)
+            0, user_indices, defined.to(self.user_interactions.dtype)
         )
 
     def compute(self):

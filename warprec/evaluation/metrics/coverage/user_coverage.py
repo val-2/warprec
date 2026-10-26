@@ -24,6 +24,7 @@ class UserCoverage(TopKMetric):
     _REQUIRED_COMPONENTS: Set[MetricBlock] = {
         MetricBlock.BINARY_RELEVANCE,
         MetricBlock.VALID_USERS,
+        MetricBlock.TOP_K_VALUES,
     }
 
     users: Tensor
@@ -35,8 +36,9 @@ class UserCoverage(TopKMetric):
     def update(self, preds: Tensor, **kwargs: Any):
         users = kwargs.get("valid_users")
 
-        # Count only users with at least one interaction
-        self.users += users.sum()
+        values = self.block(kwargs, f"top_{self.k}_values", preds)
+        # A relevant test item alone does not mean a list was produced.
+        self.users += ((users > 0) & torch.isfinite(values).any(dim=1)).sum()
 
     def compute(self):
         return {self.name: float(self.users.item())}

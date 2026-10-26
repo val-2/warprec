@@ -74,13 +74,9 @@ class REO(TopKMetric):
 
     def update(self, preds: Tensor, **kwargs: Any):
         target = kwargs.get("binary_relevance")
-        top_k_indices = kwargs.get(f"top_{self.k}_indices")
+        top_k_indices, valid = self.recommendations(preds, **kwargs)
         top_k_rel = kwargs.get(f"top_{self.k}_binary_relevance")
         item_indices = kwargs.get("item_indices")
-
-        # Remap top_k_indices to global
-        item_indices = kwargs.get("item_indices")
-        top_k_indices = self.remap_indices(top_k_indices, item_indices)
 
         # Identify Global Indices for Recommendations
         if item_indices is not None:
@@ -90,7 +86,7 @@ class REO(TopKMetric):
             _, positive_indices_global = target.nonzero(as_tuple=True)
 
         # Identify Relevant Recommended Items
-        rel_mask = top_k_rel > 0
+        rel_mask = (top_k_rel > 0) & valid
         relevant_rec_indices_global = top_k_indices[rel_mask]
 
         # Map to Clusters
