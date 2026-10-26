@@ -35,8 +35,8 @@ class UserCoverageAtN(TopKMetric):
         self.add_state("users", default=torch.tensor(0.0), dist_reduce_fx="sum")
 
     def update(self, preds: Tensor, **kwargs: Any):
-        # Count how many items have a score > 0 for each user
-        valid_items_per_user = (preds > 0).sum(dim=1)
+        # Availability is independent of a model's score scale or sign.
+        valid_items_per_user = torch.isfinite(preds).sum(dim=1)
 
         # Check if the count is >= k
         satisfied_users = valid_items_per_user.ge(self.k).sum()
