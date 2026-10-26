@@ -61,7 +61,7 @@ class Gini(TopKMetric):
 
     def compute(self):
         # Consider only items that have been recommended at least once
-        recommended_counts = self.item_counts[self.item_counts > 0].float()
+        recommended_counts = self.item_counts[self.item_counts > 0]
 
         if (
             recommended_counts.numel() == 0
