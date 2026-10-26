@@ -63,6 +63,10 @@ accumulator states. In binary nDCG the input relevance values are exact zeros
 and ones; this does not imply that every other metric or fractional input
 rating in the evaluator is computed in float64.
 
+The evaluator also preserves this explicit dtype during device placement.
+This compensates for TorchMetrics versions that reset dtype metadata to
+float32 during a device-only move, even when the metric state remains float64.
+
 Precision changes can alter the last bits while keeping the formula unchanged.
 Record the dtype and framework commit. A historical float32 reduction is a
 distinct numerical reference, not a value to emulate by changing the formula

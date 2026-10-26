@@ -634,7 +634,13 @@ class Evaluator:
         """
         for metrics in self.metrics.values():
             for metric in metrics:
+                dtype = metric.dtype
                 metric.to(device)
+                # Some TorchMetrics versions infer dtype from a fresh float32
+                # dummy during device-only moves, even when state stays float64.
+                # Restore the caller's explicit arithmetic precision as well.
+                if metric.dtype != dtype:
+                    metric.set_dtype(dtype)
 
     def compute_results(self) -> Dict[int, Dict[str, float | Tensor]]:
         """The method to retrieve computed results in dictionary format.
