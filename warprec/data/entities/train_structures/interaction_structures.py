@@ -6,6 +6,8 @@ from torch import Tensor
 from torch.utils.data import Dataset
 from scipy.sparse import csr_matrix
 
+from warprec.errors import DataError
+
 
 class InteractionDataset(Dataset):
     """A PyTorch Dataset that serves rows from a sparse matrix on-the-fly.
@@ -104,9 +106,10 @@ class NegativeSampler:
         self.niid = niid
         self.strategy = strategy
         self._cumulative: Optional[np.ndarray] = None
+        self._drawable: Optional[np.ndarray] = None
 
-        # Membership uses binary search; CSR inputs may be unsorted or contain
-        # duplicates. Canonicalize a copy without changing the caller's matrix.
+        # CSR inputs need not be sorted or duplicate-free. Canonicalize a copy
+        # only when necessary: membership below uses binary search.
         if not self.sparse_matrix.has_canonical_format:
             self.sparse_matrix = self.sparse_matrix.copy()
             self.sparse_matrix.sum_duplicates()
@@ -117,11 +120,17 @@ class NegativeSampler:
         self.rng = np.random.default_rng(seed)
 
         if strategy == "popularity":
-            self._cumulative = popularity_cumulative(sparse_matrix, niid, alpha)
+            self._cumulative = popularity_cumulative(self.sparse_matrix, niid, alpha)
             # A catalogue nobody has touched carries no popularity signal, so the
             # only meaningful thing left to do is sample uniformly.
             if self._cumulative is None:
                 self.strategy = "uniform"
+            else:
+                self._drawable = np.diff(self._cumulative, prepend=0.0) > 0
+
+        self._support_size = (
+            self.niid if self._drawable is None else int(self._drawable.sum())
+        )
 
     def sample(self, user_idx: int) -> int:
         """Draw one item the user has not interacted with.
@@ -131,10 +140,25 @@ class NegativeSampler:
 
         Returns:
             int: The sampled item index.
+
+        Raises:
+            DataError: If no unseen item can be drawn under the chosen distribution.
         """
         start = self.sparse_matrix.indptr[user_idx]
         end = self.sparse_matrix.indptr[user_idx + 1]
         seen_items = self.sparse_matrix.indices[start:end]
+        seen_items = seen_items[: np.searchsorted(seen_items, self.niid)]
+
+        seen_support = (
+            len(seen_items)
+            if self._drawable is None
+            else int(self._drawable[seen_items].sum())
+        )
+        if seen_support >= self._support_size:
+            raise DataError(
+                f"Cannot sample a training negative for user {user_idx}: no unseen "
+                f"item has positive probability under '{self.strategy}' sampling."
+            )
 
         while True:
             if self._cumulative is None:
