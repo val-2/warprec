@@ -25,4 +25,4 @@ class APLT(LongTailMetric):
         Returns:
             Tensor: The proportion of long-tail recommendations per user.
         """
-        return long_tail_hits.sum(dim=1).float() / num_recommendations
+        return long_tail_hits.sum(dim=1).to(self.dtype) / num_recommendations
