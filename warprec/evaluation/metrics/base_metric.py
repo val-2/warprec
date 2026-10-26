@@ -163,10 +163,9 @@ class BaseMetric(Metric, ABC):
         Returns:
             Tensor: The interaction count for each item.
         """
-        # Avoid division by zero: set minimum interaction
-        # count to 1 if any item has zero interactions
-        item_interactions = torch.clamp(item_interactions, min=1)
-        return item_interactions
+        # ARP averages counts directly; there is no division by popularity
+        # here, so a cold item's observed count must remain zero.
+        return item_interactions.clone()
 
     def compute_novelty_profile(
         self, item_interactions: Tensor, num_users: int, log_discount: bool = False
