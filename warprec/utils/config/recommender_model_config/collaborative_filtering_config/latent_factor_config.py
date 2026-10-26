@@ -130,6 +130,11 @@ class BPR(RecomModel):
         return validate_greater_than_zero(cls, v, "learning_rate")
 
 
+@params_registry.register("MFSoftmax")
+class MFSoftmax(BPR):
+    """Full-softmax MF with the same architecture and sampled L2 as BPR."""
+
+
 @params_registry.register("FISM")
 class FISM(RecomModel):
     """Definition of the model FISM.

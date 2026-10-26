@@ -2,7 +2,7 @@ from .autoencoder_config import CDAE, EASE, MultiDAE
 from ..content_based_config import VSM
 from .graph_based_config import GCMC, LightGCN, NGCF, RP3Beta
 from .knn_config import ItemKNN, UserKNN
-from .latent_factor_config import ADMMSlim, BPR, FISM, Slim
+from .latent_factor_config import ADMMSlim, BPR, MFSoftmax, FISM, Slim
 from .neural_config import ConvNCF, NeuMF, TwoTower
 
 __all__ = [
@@ -18,6 +18,7 @@ __all__ = [
     "UserKNN",
     "ADMMSlim",
     "BPR",
+    "MFSoftmax",
     "FISM",
     "Slim",
     "ConvNCF",
