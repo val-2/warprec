@@ -51,4 +51,4 @@ class ARP(UserAverageTopKMetric):
         recommended_items_pop = self.pop[top_k_indices]
 
         # Average popularity per user
-        return (recommended_items_pop * valid).sum(dim=1).float() / valid.sum(dim=1)
+        return (recommended_items_pop * valid).sum(dim=1) / valid.sum(dim=1)
