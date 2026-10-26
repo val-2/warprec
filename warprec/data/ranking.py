@@ -342,6 +342,7 @@ def top_k_breaking_ties(
         Tuple[Tensor, Tensor]: The top-k values, in descending order, and the
             item indices they belong to.
     """
+    k = min(k, predictions.size(1))
     if generator is None:
         return torch.topk(predictions, k, dim=1)
 

@@ -83,7 +83,7 @@ class BaseMetric(Metric, ABC):
                 - Tensor: The values tensor.
                 - Tensor: The indices tensor
         """
-        return torch.topk(preds, k, dim=1)
+        return torch.topk(preds, min(k, preds.size(1)), dim=1)
 
     @classmethod
     def top_k_relevance_from_indices(
@@ -119,7 +119,7 @@ class BaseMetric(Metric, ABC):
         Returns:
             Tensor: The top k relevance tensor.
         """
-        values, top_k_indices = torch.topk(preds, k, dim=1)
+        values, top_k_indices = torch.topk(preds, min(k, preds.size(1)), dim=1)
         return cls.top_k_relevance_from_indices(target, top_k_indices, values)
 
     def compute_head_tail(
@@ -296,7 +296,7 @@ class BaseMetric(Metric, ABC):
                     indices = blocks.get(f"top_{k}_indices")
                     if block == "values" and indices is not None:
                         return torch.gather(preds, 1, indices)
-                    values, indices = torch.topk(preds, k, dim=1)
+                    values, indices = torch.topk(preds, min(k, preds.size(1)), dim=1)
                     return values if block == "values" else indices
                 if block in ("binary_relevance", "discounted_relevance"):
                     return self.top_k_relevance_from_indices(

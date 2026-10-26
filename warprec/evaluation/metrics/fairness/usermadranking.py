@@ -64,7 +64,9 @@ class UserMADRanking(UserAverageTopKMetric):
         dcg_score = self.dcg(top_k_rel)
 
         # Compute ideal relevance (IDCG component)
-        ideal_rel = torch.topk(target, self.k, dim=1, largest=True, sorted=True).values
+        ideal_rel = torch.topk(
+            target, min(self.k, target.size(1)), dim=1, largest=True, sorted=True
+        ).values
         idcg_score = self.dcg(ideal_rel).clamp(min=1e-10)
 
         # nDCG per user

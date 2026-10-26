@@ -4,6 +4,9 @@ A ranking cutoff `k` is a maximum list length. A top-k position whose score is
 not finite is unavailable, even if its returned index happens to name a relevant
 item. Such positions contribute neither hits nor exposure. The same rule applies
 to full-catalogue scores and to sampled candidates, including padding IDs.
+If `k` exceeds the score-matrix width, ranking returns only that width. Ideal
+gain and rank-position vectors use the available width, while nominal-k
+normalizations such as Precision keep the configured cutoff.
 
 Let `m_u` be the number of available recommendations in user `u`'s first `k`
 positions, and `R_u` the user's relevant evaluation items. Ground truth is not

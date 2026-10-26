@@ -21,7 +21,7 @@ class MAP(UserAverageTopKMetric):
         self, preds: Tensor, target: Tensor, top_k_rel: Tensor, **kwargs: Any
     ) -> Tensor:
         precision_at_i = top_k_rel.cumsum(dim=1) / torch.arange(
-            1, self.k + 1, device=top_k_rel.device
+            1, top_k_rel.size(1) + 1, device=top_k_rel.device
         )  # [batch_size, k]
         normalization = torch.minimum(
             target.sum(dim=1),

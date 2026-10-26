@@ -36,7 +36,7 @@ class nDCG(UserAverageTopKMetric):
     def compute_scores(
         self, preds: Tensor, target: Tensor, top_k_rel: Tensor, **kwargs: Any
     ) -> Tensor:
-        ideal_rel = torch.topk(target, self.k, dim=1).values
+        ideal_rel = torch.topk(target, min(self.k, target.size(1)), dim=1).values
         dcg_score = self.dcg(top_k_rel)
         idcg_score = self.dcg(ideal_rel).clamp(min=1e-10)
 
@@ -61,7 +61,7 @@ class nDCGRendle2020(UserAverageTopKMetric):
     def compute_scores(
         self, preds: Tensor, target: Tensor, top_k_rel: Tensor, **kwargs: Any
     ) -> Tensor:
-        ideal_rel = torch.topk(target, self.k, dim=1).values
+        ideal_rel = torch.topk(target, min(self.k, target.size(1)), dim=1).values
         dcg_score = self.dcg(top_k_rel)
         idcg_score = self.dcg(ideal_rel).clamp(min=1e-10)
 
