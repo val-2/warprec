@@ -31,11 +31,13 @@ user_id	item_id	rating
 ...
 ```
 
-The ids are the original ones of the dataset, not WarpRec's indices; rows naming a user or item the dataset does not know are dropped. Every pair the file does not list scores **0**, which has three consequences worth checking before comparing:
+The ids are the original ones of the dataset, not WarpRec's indices; rows naming a user or item the dataset does not know, or carrying a nonfinite score, are dropped. Every pair the file does not list is **unavailable** (score `-inf`):
 
-- a user missing from the file is still evaluated, on an arbitrary list of zero-scored items, so it counts near zero rather than being left out;
-- a list shorter than the largest cutoff is completed with arbitrary unlisted items;
-- negative scores rank **below** every unlisted item, so shift them to be positive first.
+- a user missing from the file is still evaluated, with an empty list: accuracy is zero when that user has relevant test items, while list averages such as ARP and APLT are undefined;
+- a list shorter than the cutoff stays short; unlisted pairs earn no hits or exposure;
+- finite negative and explicit zero scores remain valid and retain their order. No positive score shift is needed.
+
+See [Partial recommendation lists](../evaluation/partial-rankings.md) for denominators and empty-list handling. In sampled prediction, catalogue-padding IDs are also unavailable, rather than aliases for the final real item.
 
 ## Configuration
 

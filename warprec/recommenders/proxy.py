@@ -79,7 +79,7 @@ class ProxyRecommender(Recommender):
             ratings = recommendation_df["rating"].values
 
             # Compute invalid values mask for faster filtering
-            mask = ~np.isnan(users) & ~np.isnan(items) & ~np.isnan(ratings)
+            mask = ~np.isnan(users) & ~np.isnan(items) & np.isfinite(ratings)
 
             # Filter out invalid values
             users = users[mask]
@@ -128,9 +128,11 @@ class ProxyRecommender(Recommender):
             Tensor: The score matrix {user x item}.
         """
         # Access the scores from the recommendation file
-        predictions_numpy = self.predictions_sparse[
-            user_indices.cpu().numpy()
-        ].toarray()
+        batch = self.predictions_sparse[user_indices.cpu().numpy()].tocoo()
+        # Sparse zeros and absent entries differ: a listed score of zero is a
+        # real recommendation, while an omitted pair must never enter a list.
+        predictions_numpy = np.full(batch.shape, -np.inf, dtype=batch.dtype)
+        predictions_numpy[batch.row, batch.col] = batch.data
         predictions = torch.from_numpy(predictions_numpy)
 
         # Return full or sampled predictions
@@ -139,9 +141,7 @@ class ProxyRecommender(Recommender):
             return predictions  # [batch_size, n_items]
 
         # Case 'sampled': prediction on a sampled set of items
-        return predictions.gather(
-            1,
-            item_indices.to(predictions.device).clamp(
-                max=self.n_items - 1
-            ),  # [batch_size, pad_seq]
-        )
+        indices = item_indices.to(predictions.device)
+        valid = (indices >= 0) & (indices < self.n_items)
+        sampled = predictions.gather(1, indices.clamp(min=0, max=self.n_items - 1))
+        return sampled.masked_fill(~valid, -torch.inf)
