@@ -585,6 +585,11 @@ class LightGCN(RecomModel):
         return validate_greater_than_zero(cls, v, "learning_rate")
 
 
+@params_registry.register("LightGCNSoftmax")
+class LightGCNSoftmax(LightGCN):
+    """Full-softmax objective with the same LightGCN encoder and sampled L2."""
+
+
 @params_registry.register("LightGCNpp")
 class LightGCNpp(RecomModel):
     """Definition of the model LightGCNpp.

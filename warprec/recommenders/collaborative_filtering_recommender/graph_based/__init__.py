@@ -11,6 +11,7 @@ try:
     from .lightccf import LightCCF  # noqa: F401
     from .lightgcl import LightGCL  # noqa: F401
     from .lightgcn import LightGCN  # noqa: F401
+    from .lightgcn_softmax import LightGCNSoftmax  # noqa: F401
     from .lightgcnpp import LightGCNpp  # noqa: F401
     from .lightgode import LightGODE  # noqa: F401
     from .macrgcn import MACRGCN  # noqa: F401
@@ -38,6 +39,7 @@ try:
             "LightCCF",
             "LightGCL",
             "LightGCN",
+            "LightGCNSoftmax",
             "LightGCNpp",
             "LightGODE",
             "MACRGCN",
@@ -72,6 +74,7 @@ except ImportError:
         "LightCCF",
         "LightGCL",
         "LightGCN",
+        "LightGCNSoftmax",
         "LightGCNpp",
         "LightGODE",
         "MACRGCN",
