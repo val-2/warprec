@@ -148,7 +148,10 @@ class SASRec(IterativeRecommender, SequentialRecommenderUtils):
                 self.item_embedding(neg_item),
             )
         else:
-            test_item_emb = self.item_embedding.weight  # [n_items, embedding_size]
+            # Padding is an input sentinel, never an output class. Scoring also
+            # excludes it; including it here consumes probability mass and
+            # changes every real item's cross-entropy gradient.
+            test_item_emb = self.item_embedding.weight[: self.n_items]
             logits = torch.matmul(
                 seq_output, test_item_emb.transpose(0, 1)
             )  # [batch_size, n_items]
