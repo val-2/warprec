@@ -1,3 +1,5 @@
+from math import isfinite
+
 from pydantic import field_validator
 from warprec.utils.config.model_configuration import (
     RecomModel,
@@ -133,6 +135,17 @@ class BPR(RecomModel):
 @params_registry.register("MFSoftmax")
 class MFSoftmax(BPR):
     """Full-softmax MF with the same architecture and sampled L2 as BPR."""
+
+    temperature: FLOAT_FIELD = [1.0]
+
+    @field_validator("temperature")
+    @classmethod
+    def check_temperature(cls, v: list):
+        """Validate the training-logit temperature."""
+        values = validate_greater_than_zero(cls, v, "temperature")
+        if any(isinstance(value, (int, float)) and not isfinite(value) for value in values):
+            raise ValueError("temperature must be finite")
+        return values
 
 
 @params_registry.register("FISM")

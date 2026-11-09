@@ -1,21 +1,36 @@
+from math import isfinite
 from typing import Any
 
 from torch import Tensor
 from torch.nn import functional as F
 
+from warprec.data.entities import Interactions
 from warprec.recommenders.collaborative_filtering_recommender.graph_based.lightgcn import LightGCN
 from warprec.utils.registry import model_registry
 
 
 @model_registry.register(name="LightGCNSoftmax")
 class LightGCNSoftmax(LightGCN):
-    """LightGCN encoder with full-catalog cross entropy at temperature one.
+    """LightGCN encoder with temperature-scaled full-catalog cross entropy.
 
     Propagation, initialization, dot-product inference and sampled base-embedding
     L2 are inherited unchanged. All real items, including training positives,
     enter the denominator; padding is excluded. The negative contributes only to
-    EmbLoss. Logit memory scales with batch size times catalog size.
+    EmbLoss. Temperature defaults to one and does not change inference scores.
+    Logit memory scales with batch size times catalog size.
     """
+
+    temperature: float = 1.0
+
+    @classmethod
+    def hyperparameter_names(cls) -> list[str]:
+        """Retain LightGCN's parameters when adding the training temperature."""
+        return LightGCN.hyperparameter_names() + ["temperature"]
+
+    def __init__(self, params: dict, info: dict, interactions: Interactions, *args: Any, **kwargs: Any):
+        super().__init__(params, info, interactions, *args, **kwargs)
+        if not isfinite(self.temperature) or self.temperature <= 0:
+            raise ValueError("temperature must be finite and strictly positive")
 
     def data_loss(self, users: Tensor, items: Tensor, positives: Tensor) -> Tensor:
         """Mean full-softmax loss, reusable when accumulating an epoch's gradient.
@@ -24,7 +39,7 @@ class LightGCNSoftmax(LightGCN):
         This method has no regularization or optimizer step, allowing a caller
         to preserve a full-batch training schedule without another propagation.
         """
-        return F.cross_entropy(users @ items[: self.n_items].T, positives)
+        return F.cross_entropy((users @ items[: self.n_items].T) / self.temperature, positives)
 
     def training_step(self, batch: Any, batch_idx: int) -> Tensor:
         user, pos_item, neg_item = batch

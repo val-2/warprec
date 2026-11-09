@@ -1,6 +1,8 @@
 from itertools import product
 from typing import ClassVar
 
+from math import isfinite
+
 from pydantic import field_validator
 from warprec.errors import ConfigurationError
 from warprec.utils.config.model_configuration import (
@@ -588,6 +590,17 @@ class LightGCN(RecomModel):
 @params_registry.register("LightGCNSoftmax")
 class LightGCNSoftmax(LightGCN):
     """Full-softmax objective with the same LightGCN encoder and sampled L2."""
+
+    temperature: FLOAT_FIELD = [1.0]
+
+    @field_validator("temperature")
+    @classmethod
+    def check_temperature(cls, v: list):
+        """Validate the training-logit temperature."""
+        values = validate_greater_than_zero(cls, v, "temperature")
+        if any(isinstance(value, (int, float)) and not isfinite(value) for value in values):
+            raise ValueError("temperature must be finite")
+        return values
 
 
 @params_registry.register("LightGCNpp")
