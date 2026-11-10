@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## Unreleased (thesis fork)
+
+- Align PopDCL with the authors' released implementation: last-layer graph
+  embeddings, normal initialization, user-uniform positive sampling with the
+  incomplete batch dropped, adjusted false-negative prior, negative-score floor
+  and dot-product ranking. Count binary interactions on explicit datasets and
+  retain WarpRec's EmbLoss convention. Version checkpoints to reject silently
+  loading weights trained with the former semantics. Reference and equivalence
+  checks: SY1706203/PopDCL at `5263b93ea44c4750a6650bcfe4059cb4dbe5e637`.
+
 <!-- version list -->
 
 ## v2.2.8 (2026-10-23)

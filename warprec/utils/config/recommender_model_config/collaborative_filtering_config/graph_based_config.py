@@ -1133,6 +1133,9 @@ class PAAC(RecomModel):
 class PopDCL(RecomModel):
     """Definition of the model PopDCL.
 
+    Uses the released authors' last-layer encoder and user-uniform in-batch
+    sampler. reg_weight multiplies .5/B times initial user/positive squared norms.
+
     Attributes:
         embedding_size (INT_FIELD): List of values for embedding_size.
         n_layers (INT_FIELD): List of values for n_layers.
